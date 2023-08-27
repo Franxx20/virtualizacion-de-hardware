@@ -1,0 +1,253 @@
+#!/bin/bash
+
+#################################################################################################
+#	nombre del script: ejercicio_3															
+#	N° APL: 1																					
+#	N° ejercicio: 1																				
+#	N° Entrega: 																	
+#																								
+#	Integrantes: 
+# 
+#################################################################################################
+
+
+help_msg () {
+
+    echo -e "Este script analiza el directorio pasado por parametro, calculando:\n
+                • La palabra o palabras que más ocurrencias tuvo, puede ser más de una si la cantidad de 
+                  ocurrencias es igual.
+                • Las palabras con menos ocurrencias.
+                • La cantidad total de palabras.
+                • El promedio de palabras por archivo (cantidad de palabras sobre el total de archivos 
+                  analizados) 
+                • La palabra más larga, en cantidad de caracteres
+                
+            la sintaxis es la siguiente:
+            [-d | --directorio] '"directorio a analizar"'
+            [-x | --extension]  '"extensiones a analizar"'
+            En caso de no especificar directorio, se utilizara el directorio donde este ejecutandose el script
+            "
+}
+
+checkopt () {
+    
+    if [[ $# -ge 5 ]]; then
+        errorMessage="$errorMessage""Error, demasiados parametros\n"
+    fi
+
+    options=$(getopt -q -o 'd:x:h' --long 'directorio:,extension:,help' -- "$@")
+    if [[ $? -ne 0 ]]; then
+        errorMessage="$errorMessage""Error, parametro invalido / falta de parametros \n"
+        return 1
+    fi
+    # eval: ejecuta su argumento como un comando
+    # set: setea la cadena como si fuese los argumentos de entrada
+    eval set -- "$options"
+
+    while true
+    do
+        case "$1" in
+
+            -d | --directorio)
+                                 #shifteo parametro
+                dir="$2"
+                shift 2
+                ;;
+            -x | --extension)
+                ext="$2"
+                shift 2
+                ;;
+            -h | --help)
+                action="h"
+                return 
+                ;;
+            --)                        #si esta vacio
+                shift
+                break
+                ;;
+            *)                         #parametro invalido
+                errorMessage="$errorMessage Error, Parametro no valido\n"
+                return 1
+                break
+                ;;
+        esac
+    done
+                                        # -z si la cadena vacia entra
+    if [[ -z "$dir" ]]; then           #si no existe dir, entonces uso el actual   $PWD devuelve path actual
+        dir="$PWD"
+    fi
+   
+    if ! [[ -d "$dir" ]]; then
+        errorMessage="$errorMessage""Error, *$dir* no corresponde a un directorio\n"
+        return
+    fi
+
+    if ! [[ -r "$dir" ]]; then
+        errorMessage="$errorMessage""Error, *$dir* no tiene permisos de lectura\n"
+        return
+    fi
+
+    
+
+}
+
+procesar () {
+     
+    directorio=$(readlink -f "$1")                                                            #obtengo ruta absoluta
+    extensiones=$2
+
+    if [[ -z $extensiones ]]; then
+        arrayFiles=$(echo `find "$directorio" -type f -printf '%p;'`)                 
+    else
+        OLDIFS=$IFS                                                                             #IFS: delimitador de cadenas para TODO
+        IFS=","
+        for i in $extensiones; do
+            arrayFiles+=$(echo `find "$directorio" -type f -name "*.$i" -printf '%p;'`)         #buscar en el directorio los archivos que tengan de extension a alguna de los parametros y printearlos separados por ;
+        done
+        IFS=$OLDIFS
+    fi
+
+    if [[ -z $arrayFiles ]]; then
+        errorMessage="$errorMessage""Error, no se encontraron archivos con extensiones *$extensiones* en el directorio *$directorio*\n"
+        return
+    fi
+
+                                                                                            #declarar es para usarlas solo en este scope y es al pedo pero te deja usar el ++
+    declare -i cantArch #cantidad de carchivos
+    cantArch=0 
+   
+    ###################################################################################NO FUNCIONA SI CREAS ARCHIVOS DE WINDOWS POR EL CR LF 
+    OLDIFS=$IFS
+    IFS=';' 
+    for i in ${arrayFiles[@]}; do
+        echo -e "Analizando archivo: *$i*\n"
+        if ! [[ -r "$i" ]]; then
+            echo -e" Error, *$i* no tiene permisos de lectura\n"
+        fi
+        let cantArch++
+        #IFS=$OLDIFS
+        contenido+=$(cat "$i")
+        contenido+=" "
+        #IFS=';'
+    done
+    IFS=$OLDIFS
+   
+    #falta promedio
+            # -v para pasar argumentos 
+    awk -v cantArchivos="$cantArch" ' 
+    BEGIN{
+        FS=" "
+        palMax=0
+        totalPal=0
+        minOC=1000000
+        maxOC=0
+       
+    }
+    {
+        
+        for(i=1;i<=NF;i++) {
+            totalPal++
+            palabra=$i
+                                          #si no existe/definido la palabra en el diccionario
+            if ( ! (palabra in palabrasDic) ) {
+                    
+                    palabrasDic[palabra]=1
+                    
+                    if ( length(palabra) > palMax ) {                    #busco el maximo
+                       
+                        palMax=length(palabra)                                  # longitud de la palabra
+                    }
+                
+            }
+            else
+                palabrasDic[palabra]++
+                
+        }
+    }
+    END{
+
+        #busco maximo y minimo de ocurrencias:
+        for (i in palabrasDic) {
+          
+            if (palabrasDic[i] > maxOC) {
+                
+                maxOC=palabrasDic[i]
+            }
+            if (palabrasDic[i] < minOC) {
+                minOC=palabrasDic[i]
+            }
+        }
+    
+        printf "1. PALABRA/S CON MAS OCURRENCIAS (%d): \n", maxOC
+        for (i in palabrasDic) {
+            
+            if (palabrasDic[i] == maxOC) {
+                print i
+            }
+        }
+        printf "2. PALABRA/S CON MENOS OCURRENCIAS (%d):  \n", minOC
+        for (i in palabrasDic) {
+            if (palabrasDic[i] == minOC) {
+                print i
+            }
+        }
+        print "3. TOTAL DE PALABRAS: " totalPal
+        
+        promPal=totalPal/cantArchivos
+        printf "4. PROMEDIO DE PALABRAS: %.2f\n", promPal
+
+        printf "5. PALABRA/S CON MAS LONGITUD (%d): \n", palMax
+        for (i in palabrasDic) {
+            if (length(i) == palMax) {
+                print i
+            }
+        }
+    }
+    ' <<< "$contenido"
+  
+}
+
+
+main () {
+    param="$@"
+    checkopt "$@"
+    
+    if [[ $action = 'h' ]]
+    then
+        help_msg
+        return 
+    fi
+
+    if [[ -z $errorMessage ]]
+    then
+        procesar "$dir" "$ext"
+    fi
+    
+    if [[ ! -z $errorMessage ]] 
+    then
+        echo -e "$errorMessage"
+        return
+    fi 
+}
+
+
+
+
+
+
+
+#############################################
+############ Programa #######################
+#############################################
+echo "  ---------------------------------------------------------------------------------------"
+echo "      INICIO Ejercicio 3 "
+echo "  ---------------------------------------------------------------------------------------"
+echo ""
+
+main "$@"
+
+
+echo ""
+echo "  ---------------------------------------------------------------------------------------"
+echo "        FIN " 
+echo "  ---------------------------------------------------------------------------------------"
