@@ -1,5 +1,18 @@
 #!/bin/bash
-# Ejercicio 1
+#################################################################################################
+#   Nombre del script: ej1.sh
+#   N° APL: 1
+#   N° ejercicio: 1
+#   N° Entrega: 1
+#
+#   Integrantes:
+#       Cristian Raúl Berrios
+#       Pablo Martín Ferreira
+#       Franco Javier Garcete
+#       Emanuel Juarez
+#       Carolina Nuñez
+#       Thiago Polito
+#################################################################################################
 ayuda () {
     echo -e "este script toma un archivo CSV con los datos de estacion petrolera, y devuelve un archivo de salida con los datos del archivo procesados"
 
@@ -15,7 +28,7 @@ parsear_cvs () {
     for hora in "${columna_hora[@]}"
     do
         if ! [[ -n "$hora" ]] && ! [[ "$(date -d "$hora" +%H:%M 2> /dev/null)" = "$hora" ]]; then
-            echo 'This time is valid'
+            echo 'hora invalida'
         fi
     done
 
