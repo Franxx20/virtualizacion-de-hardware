@@ -1,0 +1,9 @@
+Motor1=100
+Motor2=89
+Temperatura=25.33
+Motor1=100
+Motor2=89
+Temperatura=25.33
+Motor1=100
+Motor2=89
+Temperatura=25.33

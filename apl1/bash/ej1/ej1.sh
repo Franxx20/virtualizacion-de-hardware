@@ -37,6 +37,7 @@ ayuda () {
 # }
 
 parsear_cvs2 (){
+    #
     while IFS="," read -r r1 r2 r3 r4
     do
         columna_hora+=("$r1")
@@ -54,10 +55,6 @@ calculos () {
     # parsear hora y verificar
     for registro in "${columna_hora[@]}"
     do
-        # if  [[ -z "$hora" ]] && ! [[ "$(date -d "$hora" +%H:%M 2> /dev/null)" = "$hora" ]]; then
-        #     echo 'hora invalida'
-        #     exit 8
-        # fi
         hora=$(echo "$registro" | cut -f1 -d:)
         # le saca el cero de adelante para que pueda ser leido como un numero decimal y no un octal
         hora=${hora#0}
@@ -184,7 +181,6 @@ checkopt () {
     tiene_archivo_entrada=false
     muestra_en_pantalla=false
 
-
     eval set -- "$ARGUMENTOS_VALIDOS"
     while true
     do
@@ -233,8 +229,14 @@ checkopt () {
     done
 
 
+
     if [[ -f "$ruta_archivo_entrada" ]]
     then
+        if ! [ -s "$ruta_archivo_entrada" ] ; then
+            echo "el archivo de entrada esta vacio!"
+            exit 13
+        fi
+
         parsear_cvs2 "$ruta_archivo_entrada"
     else
         echo "archivo de entrada no valido"
