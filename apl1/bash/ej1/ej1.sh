@@ -9,7 +9,6 @@
 #       Cristian Raúl Berrios
 #       Pablo Martín Ferreira
 #       Franco Javier Garcete
-#       Emanuel Juarez
 #       Carolina Nuñez
 #       Thiago Polito
 #################################################################################################
@@ -22,23 +21,75 @@ ayuda () {
     echo "[-e / --entrada] Ruta del archivo de salida (incluye el nombre del archivo). Solo puede estar presente si se usa el parametro -a / --archivo"
 }
 
-parsear_cvs () {
-    columna_hora=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f1) )
+# parsear_cvs () {
+#     columna_hora=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f1) )
+#
+#     for hora in "${columna_hora[@]}"
+#     do
+#         if ! [[ -n "$hora" ]] && ! [[ "$(date -d "$hora" +%H:%M 2> /dev/null)" = "$hora" ]]; then
+#             echo 'hora invalida'
+#         fi
+#     done
+#
+#     columna_motor1=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f2) )
+#     columna_motor2=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f3) )
+#     columna_temperatura=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f4) )
+# }
 
-    for hora in "${columna_hora[@]}"
+parsear_cvs2 (){
+    while IFS="," read -r r1 r2 r3 r4
     do
-        if ! [[ -n "$hora" ]] && ! [[ "$(date -d "$hora" +%H:%M 2> /dev/null)" = "$hora" ]]; then
-            echo 'hora invalida'
-        fi
-    done
+        columna_hora+=("$r1")
+        columna_motor1+=("$r2")
+        columna_motor2+=("$r3")
+        columna_temperatura+=("$r4")
+    done < <(tail -n +2 "$ruta_archivo_entrada")
 
-    columna_motor1=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f2) )
-    columna_motor2=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f3) )
-    columna_temperatura=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f4) )
 }
 
 
 calculos () {
+
+    # valida las fechas
+    # parsear hora y verificar
+    for registro in "${columna_hora[@]}"
+    do
+        # if  [[ -z "$hora" ]] && ! [[ "$(date -d "$hora" +%H:%M 2> /dev/null)" = "$hora" ]]; then
+        #     echo 'hora invalida'
+        #     exit 8
+        # fi
+        hora=$(echo "$registro" | cut -f1 -d:)
+        # le saca el cero de adelante para que pueda ser leido como un numero decimal y no un octal
+        hora=${hora#0}
+        minuto=$(echo "$registro" | cut -f2 -d:)
+        # le saca el cero de adelante para que pueda ser leido como un numero decimal y no un octal
+        minuto=${minuto#0}
+        # checkea hora valida
+        # echo "hora ahora $hora"
+        if ! [[ "$hora" =~ ^[0-9]+$ ]]
+        then
+            echo "hora invalida"
+            exit 10
+        elif   [[ $hora -lt 0 ]] || [[ $hora -gt 23 ]]
+        then
+            echo "rango de hora invalida"
+            exit 12
+        fi
+
+        # checkea minuto valido
+        # echo "minuto ahora $minuto"
+        if ! [[ "$minuto" =~ ^[0-9]+$ ]] #&&
+        then
+            echo "minuto invalido"
+            exit 11
+        elif   [[ $minuto -lt 0 ]] ||  [[ $minuto -gt 59 ]]
+        then
+            echo "rango de minuto invalido"
+            exit 12
+        fi
+    done
+
+    #calcula el maximo del motor 1
     motor1MasCaliente=${columna_motor1[0]}
     for temperatura in "${columna_motor1[@]}"
     do
@@ -54,6 +105,7 @@ calculos () {
         fi
     done
 
+    #calcula el maximo del motor 2
     motor2MasCaliente=${columna_motor2[0]}
     for temperatura2 in "${columna_motor2[@]}"
     do
@@ -68,18 +120,8 @@ calculos () {
             exit 6
         fi
     done
-    # motor2MasCaliente=${columna_motor2[0]}
-    # for temperatura2 in "${columna_motor2[@]}"
-    # do
-    #     if [[ "$temperatura2" -ge "$motor2MasCaliente" && "$temperatura2" -le 100 && "$temperatura2" -ge 0 ]]
-    #     then
-    #         motor2MasCaliente="$temperatura2"
-    #     else
-    #         echo "rango de temperatura invalido motor 2[0 ... 100] temp $temperatura2 motor2MasCaliente $motor2MasCaliente"
-    #         exit 6
-    #     fi
-    # done
 
+    # calcula el promedio
     sumaTemperaturas=0
     cantRegistros=0
     for k in "${columna_temperatura[@]}"
@@ -89,7 +131,9 @@ calculos () {
     done
 
 
-    temperaturaPromedio=$(echo "scale=2; $sumaTemperaturas / $cantRegistros" | bc -l)
+    # temperaturaPromedio=$(echo "scale=2; $sumaTemperaturas / $cantRegistros" | bc -l)
+    # result=$(awk "BEGIN { printf(\"%.2f\", $num1 * $num2) }")
+    temperaturaPromedio=$(awk "BEGIN { printf(\"%.2f\", $sumaTemperaturas /$cantRegistros)}")
 
 }
 #
@@ -106,9 +150,7 @@ mostrar_en_pantalla(){
 
 enviar_a_archivo(){
     calculos
-    echo "Motor1=$motor1MasCaliente" >> $ruta_archivo_salida
-    echo "Motor2=$motor2MasCaliente" >> $ruta_archivo_salida
-    echo "Temperatura=$temperaturaPromedio" >> $ruta_archivo_salida
+    { echo "Motor1=$motor1MasCaliente"; echo "Motor2=$motor2MasCaliente"; echo "Temperatura=$temperaturaPromedio"; } >> "$ruta_archivo_salida"
 }
 #
 #
@@ -118,17 +160,23 @@ checkopt () {
     LONG=:entrada:,archivo,salida:,help
     ARGUMENTOS_VALIDOS=$(getopt -a -n ej1 --options $SHORT --longoptions $LONG -- "$@" )
 
-    if [[ "$#" -gt 5 ]]
-    then
-        errorMessage="$errorMessage""Error, demasiados parametros\n"
-    fi
-
-
     if [[ $? -ne 0 ]]
     then
         echo "[Error] - Operacion Desconocida"
         echo "Intenta $0 --help/-h para descubrir como funciona el programa"
         exit 1
+    fi
+
+    if [[ "$#" -lt 2 ]]
+    then
+        echo "Error, parametros insuficientes"
+        exit 5
+    fi
+
+    if [[ "$#" -gt 5 ]]
+    then
+        echo "Error, demasiados parametros"
+        exit 6
     fi
 
 
@@ -143,7 +191,14 @@ checkopt () {
         case "$1" in
             -e | --entrada)
                 muestra_en_pantalla=true
-                ruta_archivo_entrada=$2
+                if [[ $2 == *.csv ]]
+                then
+                    ruta_archivo_entrada=$2
+                else
+                    echo "extension de archivo de entrada incorrecto"
+                    exit 2
+                fi
+
                 # parsear_cvs "$ruta_archivo_entrada"
                 shift 2
                 ;;
@@ -180,7 +235,7 @@ checkopt () {
 
     if [[ -f "$ruta_archivo_entrada" ]]
     then
-        parsear_cvs "$ruta_archivo_entrada"
+        parsear_cvs2 "$ruta_archivo_entrada"
     else
         echo "archivo de entrada no valido"
         exit 2
@@ -204,10 +259,6 @@ main () {
 
     checkopt "$@"
 
-    if [[ $muestra_en_pantalla == true ]]
-    then
-        mostrar_en_pantalla
-    fi
 
     if  [[ $tiene_archivo_entrada == true ]]
     then
@@ -228,6 +279,12 @@ main () {
             exit 1
         fi
 
+    fi
+
+    if [[ $muestra_en_pantalla == true ]]
+    then
+        mostrar_en_pantalla
+        exit 0
     fi
 }
 
