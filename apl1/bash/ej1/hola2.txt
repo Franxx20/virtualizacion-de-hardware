@@ -13,3 +13,6 @@ Temperatura=
 Motor1=
 Motor2=
 Temperatura=
+Motor1=100
+Motor2=89
+Temperatura=25.33
