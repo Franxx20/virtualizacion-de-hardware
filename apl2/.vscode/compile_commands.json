@@ -1,0 +1,7 @@
+[
+    {
+        "command": "g++ -c -MD -g -Wall -I ./inc -pthread -lrt  src/ejercicio1.cpp -o obj/ejercicio1.o",
+        "directory": "/home/pilum/Facultad/virtualizacion-hardware/apl2",
+        "file": "/home/pilum/Facultad/virtualizacion-hardware/apl2/src/ejercicio1.cpp"
+    }
+]

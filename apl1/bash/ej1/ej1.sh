@@ -21,21 +21,6 @@ ayuda () {
     echo "[-e / --entrada] Ruta del archivo de salida (incluye el nombre del archivo). Solo puede estar presente si se usa el parametro -a / --archivo"
 }
 
-# parsear_cvs () {
-#     columna_hora=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f1) )
-#
-#     for hora in "${columna_hora[@]}"
-#     do
-#         if ! [[ -n "$hora" ]] && ! [[ "$(date -d "$hora" +%H:%M 2> /dev/null)" = "$hora" ]]; then
-#             echo 'hora invalida'
-#         fi
-#     done
-#
-#     columna_motor1=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f2) )
-#     columna_motor2=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f3) )
-#     columna_temperatura=( $(tail -n +2 "$ruta_archivo_entrada" | cut -d ',' -f4) )
-# }
-
 parsear_cvs2 (){
     #
     while IFS="," read -r r1 r2 r3 r4
@@ -164,7 +149,7 @@ checkopt () {
         exit 1
     fi
 
-    if [[ "$#" -lt 2 ]]
+    if [[ "$#" -lt 1 ]]
     then
         echo "Error, parametros insuficientes"
         exit 5

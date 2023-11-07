@@ -12,30 +12,41 @@
 #       Carolina Nuñez
 #       Thiago Polito
 #################################################################################################
+
+<#
+.SYNOPSIS
+    Es un script que se usa para obtener información del funcionamiento de una estacion petrolera
+
+.DESCRIPTION
+    Es un que analiza los registros de UsoMotor1, UsoMotor2 y Temperatura para obtener:
+    • el maximo de porcentaje de uso del Motor 1
+    • el maximo de porcentaje de uso de motor 2
+    • el promedio de la temperatura.
+
+.PARAMETER entrada
+    parametro que indica el archivo a analizar
+
+.PARAMETER archivo
+    parametro que indica que la salida va a ser por archivo(opcional)
+
+.PARAMETER salida
+    parametro que indica la ruta del archivo de salida. Solo puede estar presente si se usa el parametro -archivo
+
+#>
 Param(
-    [Parameter(Mandatory = $false,Position =1)][string]$entrada,
-    [Parameter(Mandatory = $false)]
-    [Switch]
-    $archivo,
-    [Parameter(Mandatory = $false)][string]$salida,
-    [Parameter(Mandatory = $false)][switch]$ayuda
+    [Parameter(Mandatory = $true, ParameterSetName = "sinSalida",Position=1)]
+    [Parameter(Mandatory = $true, ParameterSetName = "salida",Position=1)]
+    [string]$entrada,
+    [Parameter(Mandatory = $true, ParameterSetName = "salida")][Switch] $archivo,
+    [Parameter(Mandatory = $true, ParameterSetName = "salida")][string]$salida
 )
-[int]$global:motor1MasCaliente = -1
-[int]$global:motor2MasCaliente = -1
+
+[int]$global:motor1MasCaliente = [int]::MinValue
+[int]$global:motor2MasCaliente = [int]::MinValue
 [float]$global:promedio = 0
 
-function get-ayuda {
-    Write-Output  "este script toma un archivo CSV con los datos de estacion petrolera, y devuelve un archivo de salida con los datos del archivo procesados"
 
-    Write-Output "la sintaxis es la siguiente:"
-    Write-Output "[-e / --entrada] Ruta del archivo de entrada (incluye el nombre del archivo)"
-    Write-Output "[-a / --archivo] Si esta presente, indica que la salida va a ser por archivo. Opcional"
-    Write-Output "[-e / --entrada] Ruta del archivo de salida (incluye el nombre del archivo). Solo puede estar presente si se usa el parametro -a / --archivo"
-    
-}
-
-
-function process-csv {
+function procesar-csv {
     param (
         [Parameter(Mandatory = $True)][PSCustomObject]$archivoCSV
     )
@@ -57,9 +68,14 @@ function process-csv {
             Write-Error "el formato de hora es incorrecto hora" -ErrorAction Stop
         }
 
-
+        if([int]$_.temperatura -gt 0)
+        {
         $totalTemperatura += [int]$_.Temperatura
         $cantRegistros += 1
+        }
+        else {
+            Write-Error "la temperatura no puede ser negativa" -ErrorAction Stop
+        }
 
 
         if ($_.UsoMotor1 -le 100 && $_.UsoMotor1 -ge 0) {
@@ -88,64 +104,44 @@ function process-csv {
 
 ## ACA ARRANCO CON EL SCRIPT
 
-## FUNCION DE AYUDA QUE CORTA EL PROGRAMA SI EL PARAMETRO ESTA PRESENTE
-if ($ayuda) {
-    get-ayuda
-    exit 0
+## PREGUNTO SI EL ARCHIVO DE ENTRADA ES VALIDO
+if (-not (Test-Path -Path $entrada )) {
+    Write-Error "La ruta al archivo de entrada es invalido. ruta al archivo de entrada ingresado: $entrada" -ErrorAction Stop
 }
+
 
 ## PREGUNTO SI EL ARCHIVO DE ENTRADA ESTA VACIO
 if ([string]::IsNullOrWhiteSpace((Get-Content $entrada))) {
-    Write-Error "el archivo de entrada esta vacio!"  -ErrorAction Stop
+    # Read-Host "ingrese una ruta de archivo de entrada"
+    Write-Error "el archivo de entrada esta vacio!. Ruta al archivo de entrada ingresado: $entrada"  -ErrorAction Stop
 }
 
 ## IMPORTO LOS DATOS DEL CSV A UN OBJETO
 $archivoCSV = Import-Csv -Path $entrada
 ## FUNCION QUE PROCESA EL OBJETO Y OBTENGO LOS DATOS NECESARIOS DEL EJERCICIO
-process-csv $archivoCSV
+procesar-csv $archivoCSV
 
 
-## PREGUNTO QUE LA RUTA DE SALIDA SEA UNA RUTA POSIBLE VALIDA
-[switch] $valido = Test-Path -LiteralPath $salida -IsValid
 
 ## SI ESTA EL SWITCH ARCHIVO QUE ME OBLIGA A ENVIAR LOS DATOS A UN ARCHIVO
 if ($archivo) {
-    if ($valido) {
-
-        Write-Output "Motor1=$motor1MasCaliente" >> $salida 
-        Write-Output "Motor2=$motor2MasCaliente" >> $salida 
-        Write-Output "Temperatura=$promedio" >> $salida
+    ## PREGUNTO QUE LA RUTA DE SALIDA SEA UNA RUTA POSIBLE VALIDA
+    if (Test-Path -Path $salida -IsValid) {
+        ## para que cree una nuevo archivo con sus respectivas carpetas y el casteo es para que no me printee en pantalla el resutlado
+        [void](New-Item -Path $salida -ItemType File -Force )
+        Write-Output "Motor1=$motor1MasCaliente" | Out-File $salida -Append
+        Write-Output "Motor2=$motor2MasCaliente" | Out-File $salida -Append
+        Write-Output "Temperatura=$promedio" | Out-File $salida -Append
     }
-## EL SWITCH ESTA PERO ME FALTA LA RUTA DE SALIDA
-    else {
-        Write-Output "psss... you gotta Supply values for the following parameters:"
-        $salidaUsuario = Read-Host "ingrese una ruta de salida"
-        ## CHECKEO QUE LA RUTA QUE PASO EL USUARIO SEA VALIDA
-        [switch] $validoUsuario = Test-Path -LiteralPath $salidaUsuario -IsValid
-        if ($validoUsuario) {
-            Write-Output "Motor1=$motor1MasCaliente" >> $salidaUsuario 
-            Write-Output "Motor2=$motor2MasCaliente" >> $salidaUsuario 
-            Write-Output "Temperatura=$promedio" >> $salidaUsuario
-        }
-        else {
-            ## MANDASTE MACANA 
-            Write-Error "no escribio una ruta de salida valida" -ErrorAction Stop
-        }
+    else { 
+        Write-Error "la ruta de salida es invalida. La ruta ingresada fue: $salida" -ErrorAction Stop
     }
 
     exit 0 
 }
-else {
-    ## SI PASASTE UN ARCHIVO DE SALIDA VALIDO PERO TE FALTO EL SWITCH -ARCHIVO
-    if ($valido) {
-        Write-Error "falta el parametro -archivo!" -ErrorAction Stop
-
-    }
-}
 
 
 ## SI SOLO PASE LA RUTA DE ENTRADA ENTONCES IMPRIMO EN PANTALLA
-Write-Output "i am here"
 Write-Output "promedio final $global:promedio"
 Write-Output "Mayor Temperatura motor1 $global:motor1MasCaliente"
 Write-Output "Mayor Temperatura motor2 $global:motor2MasCaliente"

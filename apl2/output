@@ -1,0 +1,33 @@
+Proceso: 1, PID: 94603, PID Padre: 94602
+
+Proceso: 4, PID: 94623, PID Padre: 94603
+
+Proceso: 3, PID: 94620, PID Padre: 94603
+
+Proceso: 2, PID: 94624, PID Padre: 1375
+
+Proceso: 6, PID: 94640, PID Padre: 94620
+
+Proceso: 7, PID: 94639, PID Padre: 94623
+
+Proceso: 5, PID: 94643, PID Padre: 94624
+
+Cerrando proceso ultimo: 5
+Proceso: 8, PID: 94641, PID Padre: 94623
+
+Cerrando proceso padre: 2
+Cerrando proceso ultimo: 8
+Proceso: 10, PID: 94690, PID Padre: 94639
+
+Cerrando proceso ultimo: 10
+Proceso: 9, PID: 94691, PID Padre: 94640
+
+Cerrando proceso padre: 7
+Cerrando proceso padre: 4
+Proceso: 11, PID: 94703, PID Padre: 94691
+
+Cerrando proceso ultimo: 11
+Cerrando proceso padre: 9
+Cerrando proceso padre: 6
+Cerrando proceso padre: 3
+Cerrando proceso padre: 1
